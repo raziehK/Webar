@@ -2,56 +2,27 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Simple AR Box Placer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AR Ground Box</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    <style>
-        body { margin: 0; overflow: hidden }
-        #tap-hint {
-            position: fixed;
-            bottom: 20px;
-            left: 0;
-            right: 0;
-            text-align: center;
-            color: white;
-            background: rgba(0,0,0,0.7);
-            padding: 10px;
-        }
-    </style>
 </head>
-<body>
-    <div id="tap-hint">Tap anywhere to place a red box</div>
-
+<body style="margin: 0; overflow: hidden;">
     <a-scene 
         vr-mode-ui="enabled: false"
         arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false"
+        renderer="logarithmicDepthBuffer: true;"
     >
-        <!-- Camera -->
+        <!-- Static box placed on ground -->
+        <a-box 
+            position="0 0 -1" 
+            rotation="-90 0 0" 
+            color="red" 
+            scale="0.3 0.3 0.3"
+            shadow
+        ></a-box>
+        
         <a-entity camera></a-entity>
-        
-        <!-- This box will be copied on tap -->
-        <a-entity id="template-box" visible="false">
-            <a-box color="red" scale="0.2 0.2 0.2"></a-box>
-        </a-entity>
     </a-scene>
-
-    <script>
-        const scene = document.querySelector('a-scene');
-        
-        // Wait for AR to load
-        scene.addEventListener('loaded', function() {
-            // Place box on any tap
-            window.addEventListener('click', function() {
-                const newBox = document.getElementById('template-box').cloneNode(true);
-                newBox.setAttribute('visible', 'true');
-                
-                // Place 1 meter in front of camera
-                newBox.setAttribute('position', '0 0 -1');
-                
-                scene.appendChild(newBox);
-                document.getElementById('tap-hint').textContent = `Box placed!`;
-            });
-        });
-    </script>
 </body>
 </html>
