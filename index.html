@@ -2,29 +2,68 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Location-Based AR with Marker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AR Location-Marker Hybrid</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/nicolocarpignoli/geo-ar.js/dist/geo-ar.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/nicolocarpignoli/geo-ar.js/dist/geo-ar.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden }
+        a-scene { height: 100vh; width: 100vw }
+    </style>
 </head>
 <body>
-    <a-scene embedded arjs="debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;">
-        <!-- Marker-based calibration -->
-        <a-marker id="marker" type="pattern" preset="custom" url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/patt.kanji">
-            <!-- Location-based content -->
-            <a-entity 
-                geoarjs="latitude: 48.2898625; longitude: 14.2827365;"
-                glb-model="src: https://raw.githubusercontent.com/raziehK/Webar/main/My_model.glb"
+    <a-scene 
+        embedded 
+        arjs="sourceType: webcam; sourceWidth: 1280; sourceHeight: 720; debugUIEnabled: false"
+        renderer="logarithmicDepthBuffer: true; precision: medium;"
+        gps-camera="gpsMinDistance: 5"
+    >
+        <!-- Marker for calibration (replace with your pattern) -->
+        <a-marker 
+            id="ar-marker" 
+            type="pattern" 
+            url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/patt.kanji"
+            emitevents="true" 
+            cursor="rayOrigin: mouse"
+        >
+            <!-- Your 3D Model at specified GPS coordinates -->
+            <a-entity
+                id="model-container"
+                glb-model="src: https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/REPO_NAME/main/My_model.glb"
                 scale="1 1 1"
+                position="0 0 0"
                 rotation="0 0 0"
-                animation="property: rotation; to: 0 360 0; loop: true; dur: 5000">
+                gps-entity-place="latitude: 48.2898625; longitude: 14.2827365;"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 10000"
+            >
             </a-entity>
         </a-marker>
-        
-        <!-- Camera setup -->
-        <a-entity camera></a-entity>
+
+        <!-- Camera Setup -->
+        <a-entity id="camera" camera look-controls wasd-controls></a-entity>
     </a-scene>
+
+    <script>
+        // Camera projection fix
+        AFRAME.registerComponent('fix-projection', {
+            tick: function() {
+                const camera = this.el.sceneEl.camera;
+                if(camera && camera.el.getAttribute('arjs-device-orientation')) {
+                    camera.projectionMatrix = camera.el.getAttribute('arjs-device-orientation').projectionMatrix;
+                }
+            }
+        });
+
+        // Auto-rotate model when marker is visible
+        document.querySelector('#ar-marker').addEventListener('markerFound', () => {
+            document.querySelector('#model-container').setAttribute('animation', 'enabled', true);
+        });
+
+        // Force cache refresh on load
+        const cacheBuster = Date.now();
+        document.querySelector('[glb-model]').setAttribute('glb-model', 'src', 
+            `https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/REPO_NAME/main/My_model.glb?t=${cacheBuster}`);
+    </script>
 </body>
 </html>
-
