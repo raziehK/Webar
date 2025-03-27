@@ -1,59 +1,81 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AR Camera Fix</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tap-to-Place AR</title>
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
-        #permission-overlay {
+        body { margin: 0; overflow: hidden }
+        #instructions {
             position: fixed;
-            top: 0;
+            bottom: 20px;
             left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.9);
+            right: 0;
+            text-align: center;
             color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 99999;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
         }
     </style>
 </head>
 <body>
-    <div id="permission-overlay">
-        <h2>Camera Access Required</h2>
-        <button id="enable-camera">Enable Camera</button>
-        <p id="status">Click the button above to allow camera access</p>
-    </div>
+    <div id="instructions">Tap anywhere to place a box</div>
 
-    <a-scene embedded arjs>
-        <!-- Your AR content -->
+    <a-scene 
+        embedded 
+        arjs="trackingMethod: best; sourceType: webcam;"
+        vr-mode-ui="enabled: false"
+        renderer="logarithmicDepthBuffer: true"
+    >
+        <!-- Camera setup -->
+        <a-entity camera></a-entity>
     </a-scene>
 
     <script>
-        const overlay = document.getElementById('permission-overlay');
-        const status = document.getElementById('status');
+        const scene = document.querySelector('a-scene');
+        let arSystem = scene.systems['arjs'];
+        let hitTestEnabled = false;
 
-        async function requestCamera() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                overlay.style.display = 'none';
-                window.location.reload();
-            } catch (err) {
-                status.innerHTML = `Error: ${err.message}<br>
-                    Please enable camera access in browser settings`;
-            }
+        // Wait for AR to initialize
+        scene.addEventListener('loaded', () => {
+            // Enable hit testing when AR is ready
+            scene.addEventListener('arjs-video-loaded', () => {
+                hitTestEnabled = true;
+            });
+        });
+
+        // Handle screen taps
+        window.addEventListener('click', (e) => {
+            if(!hitTestEnabled) return;
+            
+            // Get touch position
+            const x = (e.clientX / window.innerWidth) * 2 - 1;
+            const y = -(e.clientY / window.innerHeight) * 2 + 1;
+            
+            // Create box at tapped position
+            const box = document.createElement('a-box');
+            box.setAttribute('position', '0 0 -0.5');
+            box.setAttribute('rotation', '0 0 0');
+            box.setAttribute('color', getRandomColor());
+            box.setAttribute('scale', '0.2 0.2 0.2');
+            
+            // Add to scene
+            scene.appendChild(box);
+            
+            // Animate
+            box.setAttribute('animation', {
+                property: 'rotation',
+                to: '0 360 0',
+                loop: true,
+                dur: 5000
+            });
+        });
+
+        function getRandomColor() {
+            return '#' + Math.floor(Math.random()*16777215).toString(16);
         }
-
-        document.getElementById('enable-camera').onclick = requestCamera;
-
-        // Auto-check on load
-        (async () => {
-            const permissions = await navigator.permissions.query({ name: 'camera' });
-            if(permissions.state === 'granted') {
-                overlay.style.display = 'none';
-            }
-        })();
     </script>
 </body>
 </html>
