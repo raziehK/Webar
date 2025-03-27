@@ -3,144 +3,92 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AR Debug Mode</title>
+    <title>AR Test with Red Box</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/nicolocarpignoli/geo-ar.js/dist/geo-ar.min.js"></script>
     <style>
         body { margin: 0; overflow: hidden }
-        #debug-panel {
+        #status {
             position: fixed;
             top: 10px;
             left: 10px;
-            background: rgba(0,0,0,0.8);
             color: white;
-            padding: 15px;
             z-index: 9999;
-            font-family: monospace;
-            width: 300px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
         }
-        .status { color: #00ff00 }
-        .error { color: #ff0000 }
     </style>
 </head>
 <body>
-    <div id="debug-panel">
-        <h3>AR DEBUG CONSOLE</h3>
-        <div>GPS Status: <span id="gps-status" class="status">--</span></div>
-        <div>Marker Status: <span id="marker-status" class="status">--</span></div>
-        <div>Model Status: <span id="model-status" class="status">--</span></div>
-        <div>Distance: <span id="distance">--</span>m</div>
-        <div>Camera Feed: <span id="camera-status" class="status">--</span></div>
-        <div id="error-message" class="error"></div>
+    <div id="status">
+        Marker: <span id="marker-status">Searching...</span><br>
+        Model: <span id="model-status">Loading...</span>
     </div>
 
     <a-scene 
         embedded 
-        arjs="sourceType: webcam; debugUIEnabled: true; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
-        renderer="logarithmicDepthBuffer: true; precision: high;"
-        gps-camera="gpsMinDistance: 0; gpsTimeInterval: 500"
+        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+        renderer="logarithmicDepthBuffer: true;"
+        gps-camera="gpsMinDistance: 0"
     >
-        <!-- Marker Configuration -->
+        <!-- Marker Definition -->
         <a-marker 
             id="main-marker"
             type="pattern" 
-            preset="custom"
             url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/patt.kanji"
         >
-            <!-- Visual Test Object (Always Visible) -->
+            <!-- Red Test Box -->
             <a-box 
-                color="#00FF00" 
-                scale="1 1 1"
+                color="red"
                 position="0 0.5 0"
+                scale="0.5 0.5 0.5"
                 animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"
             ></a-box>
 
-            <!-- Your Model (Scaled 10x) -->
+            <!-- Your GLB Model -->
             <a-entity
                 id="main-model"
-                glb-model="src: https://githack.com/raziehK/Webar/raw/main/My_model.glb?t=123"
-                scale="10 10 10"
+                glb-model="src: https://rawcdn.githack.com/YOUR_GITHUB_USER/YOUR_REPO/BRANCH/My_model.glb?v=1"
+                scale="3 3 3"
                 position="0 0 0"
                 gps-entity-place="latitude: 48.2898625; longitude: 14.2827365;"
-                visible="false"
             ></a-entity>
         </a-marker>
 
-        <!-- Camera Setup -->
-        <a-entity camera look-controls wasd-controls></a-entity>
+        <a-entity camera></a-entity>
     </a-scene>
 
     <script>
-        // ======================
-        // DEBUGGING SYSTEM
-        // ======================
+        // Event Listeners for Debugging
+        const marker = document.querySelector('#main-marker');
+        const model = document.querySelector('#main-model');
 
-        // 1. Verify Marker Detection
-        document.querySelector('#main-marker').addEventListener('markerFound', () => {
-            document.getElementById('marker-status').textContent = 'DETECTED';
-            document.querySelector('#main-model').setAttribute('visible', 'true');
+        // Marker Detection Events
+        marker.addEventListener('markerFound', () => {
+            document.getElementById('marker-status').textContent = 'Found!';
         });
 
-        document.querySelector('#main-marker').addEventListener('markerLost', () => {
-            document.getElementById('marker-status').textContent = 'NOT FOUND';
-            document.querySelector('#main-model').setAttribute('visible', 'false');
+        marker.addEventListener('markerLost', () => {
+            document.getElementById('marker-status').textContent = 'Lost';
         });
 
-        // 2. Verify Model Loading
-        document.querySelector('#main-model').addEventListener('model-loaded', () => {
-            document.getElementById('model-status').textContent = 'LOADED';
+        // Model Loading Events
+        model.addEventListener('model-loaded', () => {
+            document.getElementById('model-status').textContent = 'Loaded';
         });
 
-        document.querySelector('#main-model').addEventListener('error', (e) => {
-            document.getElementById('model-status').textContent = 'ERROR';
-            document.getElementById('error-message').textContent = 
-                `Model failed to load: ${e.detail.message}`;
+        model.addEventListener('error', (e) => {
+            document.getElementById('model-status').textContent = 'Error!';
+            console.error('Model load error:', e.detail);
         });
 
-        // 3. GPS Monitoring
-        window.addEventListener('gps-entity-place-update', (e) => {
-            document.getElementById('distance').textContent = e.detail.distance.toFixed(1);
-            document.getElementById('gps-status').textContent = 
-                `ACC: ${e.detail.accuracy}m | ALT: ${e.detail.altitude}m`;
-        });
-
-        // 4. Camera Status Monitoring
-        const scene = document.querySelector('a-scene');
-        scene.addEventListener('arjs-video-loaded', () => {
-            document.getElementById('camera-status').textContent = 'ACTIVE';
-        });
-
-        // 5. Force Model Reload
-        function reloadModel() {
-            const model = document.querySelector('#main-model');
-            const newSrc = `https://githack.com/YOUR_GITHUB_USER/YOUR_REPO/raw/main/My_model.glb?t=${Date.now()}`;
-            model.setAttribute('glb-model', 'src', newSrc);
-            model.setAttribute('visible', 'true');
+        // Mobile Reload Fix
+        if(/Mobile/.test(navigator.userAgent)) {
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
         }
-
-        // ======================
-        // EMERGENCY OVERRIDES
-        // ======================
-        // Enable these if still not working
-        // Remove comment slashes (//) to activate
-
-        // Force GPS coordinates (testing)
-        // AFRAME.components['gps-camera'].prototype.originCoords = {
-        //     latitude: 48.2898625,
-        //     longitude: 14.2827365
-        // };
-
-        // Disable distance check
-        // document.querySelector('[gps-camera]').setAttribute('gps-camera', 'gpsMinDistance', 1000);
-
-        // Immediate test
-        setTimeout(() => {
-            if(document.getElementById('model-status').textContent === '--') {
-                document.getElementById('error-message').textContent = 
-                    'Model failed to load - check URL and console errors';
-            }
-        }, 5000);
     </script>
 </body>
 </html>
