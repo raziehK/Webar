@@ -1,25 +1,79 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>GeoAR.js demo</title>
-    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-    <script src="https://unpkg.com/aframe-look-at-component@1.0.0/dist/aframe-look-at-component.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
-  </head>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fixed Location AR Box</title>
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/nicolocarpignoli/geo-ar.js/dist/geo-ar.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden }
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 1.5em;
+            z-index: 10000;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">Initializing AR at 48.289888, 14.282726...</div>
 
-  <body>
-    <a-scene
-      vr-mode-ui="enabled: false"
-      arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;"
+    <a-scene 
+        vr-mode-ui="enabled: false"
+        arjs="sourceType: webcam; debugUIEnabled: false;"
+        renderer="logarithmicDepthBuffer: true"
     >
-      <a-text
-        value="This content will always face you."
-        scale="120 120 120"
-        gps-entity-place="latitude: 48.289888; longitude: 14.282726;"
-      ></a-text>
-      <a-camera gps-camera rotation-reader> </a-camera>
+        <!-- 3m x 3m x 3m Box at your coordinates -->
+        <a-box
+            color="#FF0000"
+            scale="3 3 3"
+            gps-entity-place="latitude: 48.289888; longitude: 14.282726;"
+            material="opacity: 0.9; metalness: 0.2; roughness: 0.7"
+            shadow
+        ></a-box>
+
+        <a-entity camera gps-camera rotation-reader></a-entity>
     </a-scene>
-  </body>
+
+    <script>
+        // Hide loading when ready
+        document.querySelector('a-scene').addEventListener('loaded', () => {
+            setTimeout(() => {
+                document.getElementById('loading').style.display = 'none';
+            }, 3000);
+        });
+
+        // Debug position
+        window.addEventListener('gps-camera-update-position', (e) => {
+            console.log('Current position:', e.detail.position);
+            console.log('Distance to box:', calculateDistance(
+                e.detail.position.latitude,
+                e.detail.position.longitude,
+                48.289888,
+                14.282726
+            ) + ' meters');
+        });
+
+        // Distance calculation function
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // Earth radius in meters
+            const φ1 = lat1 * Math.PI/180;
+            const φ2 = lat2 * Math.PI/180;
+            const Δφ = (lat2-lat1) * Math.PI/180;
+            const Δλ = (lon2-lon1) * Math.PI/180;
+
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+            return R * c;
+        }
+    </script>
+</body>
 </html>
