@@ -3,65 +3,95 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Marker AR Test</title>
+    <title>World/Marker AR Placement</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
         body { margin: 0; overflow: hidden }
-        #status {
+        #controls {
             position: fixed;
-            top: 10px;
-            left: 10px;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             color: white;
-            background: rgba(0,0,0,0.7);
-            padding: 10px;
-            z-index: 9999;
+            text-align: center;
         }
     </style>
 </head>
 <body>
-    <div id="status">Marker: Searching...</div>
+    <div id="controls">
+        <button onclick="placeObject()">Place Here</button>
+        <p id="status">Initializing...</p>
+    </div>
 
     <a-scene 
         embedded 
-        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
-        renderer="logarithmicDepthBuffer: true;"
+        arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best;"
+        vr-mode-ui="enabled: false"
     >
-        <!-- Simple Hiro Marker -->
+        <!-- Marker Tracking Version (comment/uncomment) -->
+        <!--
         <a-marker preset="hiro">
-            <!-- Red Test Box -->
-            <a-box 
-                color="red"
-                position="0 0.5 0"
-                scale="0.3 0.3 0.3"
-                animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"
-            ></a-box>
+            <a-entity id="virtual-object" glb-model="url(https://your-model.glb)"></a-entity>
         </a-marker>
+        -->
 
+        <!-- World Tracking Version -->
+        <a-entity id="virtual-object" glb-model="url(https://your-model.glb)" visible="false"></a-entity>
+        
         <a-entity camera></a-entity>
     </a-scene>
 
     <script>
-        // Basic marker detection feedback
-        const marker = document.querySelector('a-marker');
-        const statusDiv = document.getElementById('status');
+        // ======================
+        // WORLD TRACKING VERSION
+        // ======================
+        let objectPlaced = false;
+        const modelScale = 0.5; // Adjust based on your model size
 
-        marker.addEventListener('markerFound', () => {
-            statusDiv.textContent = "Marker: FOUND ✅";
-            statusDiv.style.color = "#00ff00";
-        });
-
-        marker.addEventListener('markerLost', () => {
-            statusDiv.textContent = "Marker: LOST ❌";
-            statusDiv.style.color = "#ff0000";
-        });
-
-        // Add fail-safe check
-        setTimeout(() => {
-            if(statusDiv.textContent.includes("Searching")) {
-                statusDiv.innerHTML = "Check:<br>- Camera permissions<br>- Marker visibility<br>- HTTPS connection";
+        function placeObject() {
+            if(!objectPlaced) {
+                const scene = document.querySelector('a-scene');
+                const object = document.querySelector('#virtual-object');
+                
+                // Get device orientation
+                scene.systems["arjs"].getSource().copyWorldPosition(object.object3D);
+                
+                // Set scale and visibility
+                object.setAttribute('scale', `${modelScale} ${modelScale} ${modelScale}`);
+                object.setAttribute('visible', 'true');
+                objectPlaced = true;
+                
+                document.getElementById('status').textContent = "Object placed!";
             }
-        }, 5000);
+        }
+
+        // =====================
+        // COMMON INITIALIZATION
+        // =====================
+        document.querySelector('a-scene').addEventListener('loaded', () => {
+            // Check camera support
+            if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                document.getElementById('status').textContent = "AR not supported on this device";
+                return;
+            }
+
+            // Start AR session
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(() => {
+                    document.getElementById('status').textContent = "Point camera and tap 'Place Here'";
+                })
+                .catch(() => {
+                    document.getElementById('status').textContent = "Camera access denied";
+                });
+        });
+
+        // Add test object for verification
+        const testBox = document.createElement('a-box');
+        testBox.setAttribute('color', 'red');
+        testBox.setAttribute('position', '0 0 -1');
+        testBox.setAttribute('scale', '0.2 0.2 0.2');
+        document.querySelector('a-scene').appendChild(testBox);
     </script>
 </body>
 </html>
