@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AR Location-Marker Hybrid</title>
+    <title>AR Debug Mode</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/nicolocarpignoli/geo-ar.js/dist/geo-ar.min.js"></script>
@@ -13,78 +13,134 @@
             position: fixed;
             top: 10px;
             left: 10px;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.8);
             color: white;
-            padding: 10px;
+            padding: 15px;
             z-index: 9999;
+            font-family: monospace;
+            width: 300px;
         }
+        .status { color: #00ff00 }
+        .error { color: #ff0000 }
     </style>
 </head>
 <body>
     <div id="debug-panel">
-        <div>Distance to Model: <span id="distance">-</span>m</div>
-        <div>GPS Accuracy: <span id="accuracy">-</span></div>
+        <h3>AR DEBUG CONSOLE</h3>
+        <div>GPS Status: <span id="gps-status" class="status">--</span></div>
+        <div>Marker Status: <span id="marker-status" class="status">--</span></div>
+        <div>Model Status: <span id="model-status" class="status">--</span></div>
+        <div>Distance: <span id="distance">--</span>m</div>
+        <div>Camera Feed: <span id="camera-status" class="status">--</span></div>
+        <div id="error-message" class="error"></div>
     </div>
 
     <a-scene 
         embedded 
-        arjs="sourceType: webcam; sourceWidth: 1280; sourceHeight: 720; debugUIEnabled: false"
-        renderer="logarithmicDepthBuffer: true; precision: medium;"
-        gps-camera="gpsMinDistance: 5; simulateLatitude: 48.2898625; simulateLongitude: 14.2827365;"
+        arjs="sourceType: webcam; debugUIEnabled: true; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+        renderer="logarithmicDepthBuffer: true; precision: high;"
+        gps-camera="gpsMinDistance: 0; gpsTimeInterval: 500"
     >
-        <!-- Marker for calibration -->
+        <!-- Marker Configuration -->
         <a-marker 
-            id="ar-marker" 
+            id="main-marker"
             type="pattern" 
+            preset="custom"
             url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/patt.kanji"
         >
-            <!-- Scaled Model Container -->
-            <a-entity id="model-container" position="0 1.5 0">
-                <!-- Your 3D Model (scaled 5x) -->
-                <a-entity
-                    glb-model="src: https://raw.githubusercontent.com/YOUR_USER/REPO/main/My_model.glb?t=123"
-                    scale="5 5 5"
-                    gps-entity-place="latitude: 48.2898625; longitude: 14.2827365;"
-                ></a-entity>
-                
-                <!-- Test Primitive (giant red box) -->
-                <a-box 
-                    color="red" 
-                    scale="2 2 2"
-                    position="0 -1 0"
-                    animation="property: rotation; to: 0 360 0; loop: true; dur: 5000"
-                ></a-box>
-            </a-entity>
+            <!-- Visual Test Object (Always Visible) -->
+            <a-box 
+                color="#00FF00" 
+                scale="1 1 1"
+                position="0 0.5 0"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"
+            ></a-box>
+
+            <!-- Your Model (Scaled 10x) -->
+            <a-entity
+                id="main-model"
+                glb-model="src: https://githack.com/raziehK/Webar/raw/main/My_model.glb?t=123"
+                scale="10 10 10"
+                position="0 0 0"
+                gps-entity-place="latitude: 48.2898625; longitude: 14.2827365;"
+                visible="false"
+            ></a-entity>
         </a-marker>
 
+        <!-- Camera Setup -->
         <a-entity camera look-controls wasd-controls></a-entity>
     </a-scene>
 
     <script>
-        // Force model reload on refresh
-        const cacheBuster = `?t=${Date.now()}`;
-        document.querySelector('[glb-model]').setAttribute('glb-model', 'src', 
-            `https://raw.githubusercontent.com/YOUR_USER/REPO/main/My_model.glb${cacheBuster}`);
+        // ======================
+        // DEBUGGING SYSTEM
+        // ======================
 
-        // Debug GPS information
+        // 1. Verify Marker Detection
+        document.querySelector('#main-marker').addEventListener('markerFound', () => {
+            document.getElementById('marker-status').textContent = 'DETECTED';
+            document.querySelector('#main-model').setAttribute('visible', 'true');
+        });
+
+        document.querySelector('#main-marker').addEventListener('markerLost', () => {
+            document.getElementById('marker-status').textContent = 'NOT FOUND';
+            document.querySelector('#main-model').setAttribute('visible', 'false');
+        });
+
+        // 2. Verify Model Loading
+        document.querySelector('#main-model').addEventListener('model-loaded', () => {
+            document.getElementById('model-status').textContent = 'LOADED';
+        });
+
+        document.querySelector('#main-model').addEventListener('error', (e) => {
+            document.getElementById('model-status').textContent = 'ERROR';
+            document.getElementById('error-message').textContent = 
+                `Model failed to load: ${e.detail.message}`;
+        });
+
+        // 3. GPS Monitoring
         window.addEventListener('gps-entity-place-update', (e) => {
             document.getElementById('distance').textContent = e.detail.distance.toFixed(1);
-            document.getElementById('accuracy').textContent = e.detail.accuracy.toFixed(1) + 'm';
+            document.getElementById('gps-status').textContent = 
+                `ACC: ${e.detail.accuracy}m | ALT: ${e.detail.altitude}m`;
         });
 
-        // Auto-zoom based on distance
-        AFRAME.registerComponent('auto-scale', {
-            tick: function() {
-                const distance = parseFloat(document.getElementById('distance').textContent);
-                if(distance && !isNaN(distance)) {
-                    const scale = Math.min(Math.max(distance * 0.5, 2), 10);
-                    this.el.setAttribute('scale', `${scale} ${scale} ${scale}`);
-                }
+        // 4. Camera Status Monitoring
+        const scene = document.querySelector('a-scene');
+        scene.addEventListener('arjs-video-loaded', () => {
+            document.getElementById('camera-status').textContent = 'ACTIVE';
+        });
+
+        // 5. Force Model Reload
+        function reloadModel() {
+            const model = document.querySelector('#main-model');
+            const newSrc = `https://githack.com/YOUR_GITHUB_USER/YOUR_REPO/raw/main/My_model.glb?t=${Date.now()}`;
+            model.setAttribute('glb-model', 'src', newSrc);
+            model.setAttribute('visible', 'true');
+        }
+
+        // ======================
+        // EMERGENCY OVERRIDES
+        // ======================
+        // Enable these if still not working
+        // Remove comment slashes (//) to activate
+
+        // Force GPS coordinates (testing)
+        // AFRAME.components['gps-camera'].prototype.originCoords = {
+        //     latitude: 48.2898625,
+        //     longitude: 14.2827365
+        // };
+
+        // Disable distance check
+        // document.querySelector('[gps-camera]').setAttribute('gps-camera', 'gpsMinDistance', 1000);
+
+        // Immediate test
+        setTimeout(() => {
+            if(document.getElementById('model-status').textContent === '--') {
+                document.getElementById('error-message').textContent = 
+                    'Model failed to load - check URL and console errors';
             }
-        });
-
-        // Add to model container
-        document.querySelector('#model-container').setAttribute('auto-scale', '');
+        }, 5000);
     </script>
 </body>
 </html>
