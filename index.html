@@ -3,31 +3,32 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tap-to-Place AR</title>
+    <title>Tap-to-Place AR Boxes</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
     <style>
         body { margin: 0; overflow: hidden }
-        #instructions {
+        #tap-hint {
             position: fixed;
             bottom: 20px;
             left: 0;
             right: 0;
             text-align: center;
             color: white;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.7);
             padding: 10px;
+            font-family: Arial;
+            z-index: 9999;
         }
     </style>
 </head>
 <body>
-    <div id="instructions">Tap anywhere to place a box</div>
+    <div id="tap-hint">Tap anywhere to place a box</div>
 
     <a-scene 
-        embedded 
-        arjs="trackingMethod: best; sourceType: webcam;"
         vr-mode-ui="enabled: false"
-        renderer="logarithmicDepthBuffer: true"
+        arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false"
+        renderer="logarithmicDepthBuffer: true; antialias: true"
     >
         <!-- Camera setup -->
         <a-entity camera></a-entity>
@@ -35,46 +36,46 @@
 
     <script>
         const scene = document.querySelector('a-scene');
-        let arSystem = scene.systems['arjs'];
-        let hitTestEnabled = false;
-
+        
         // Wait for AR to initialize
         scene.addEventListener('loaded', () => {
-            // Enable hit testing when AR is ready
-            scene.addEventListener('arjs-video-loaded', () => {
-                hitTestEnabled = true;
-            });
-        });
-
-        // Handle screen taps
-        window.addEventListener('click', (e) => {
-            if(!hitTestEnabled) return;
+            // Create 100 boxes when tapping
+            let boxCount = 0;
+            const maxBoxes = 100;
             
-            // Get touch position
-            const x = (e.clientX / window.innerWidth) * 2 - 1;
-            const y = -(e.clientY / window.innerHeight) * 2 + 1;
-            
-            // Create box at tapped position
-            const box = document.createElement('a-box');
-            box.setAttribute('position', '0 0 -0.5');
-            box.setAttribute('rotation', '0 0 0');
-            box.setAttribute('color', getRandomColor());
-            box.setAttribute('scale', '0.2 0.2 0.2');
-            
-            // Add to scene
-            scene.appendChild(box);
-            
-            // Animate
-            box.setAttribute('animation', {
-                property: 'rotation',
-                to: '0 360 0',
-                loop: true,
-                dur: 5000
+            window.addEventListener('click', (e) => {
+                if(boxCount >= maxBoxes) return;
+                
+                // Create a new box
+                const box = document.createElement('a-box');
+                box.setAttribute('color', getRandomColor());
+                box.setAttribute('scale', '0.2 0.2 0.2');
+                box.setAttribute('position', getRandomPosition());
+                box.setAttribute('animation', {
+                    property: 'rotation',
+                    to: '0 360 0',
+                    loop: true,
+                    dur: Math.random() * 3000 + 2000
+                });
+                
+                scene.appendChild(box);
+                boxCount++;
+                document.getElementById('tap-hint').textContent = 
+                    `Boxes placed: ${boxCount}/${maxBoxes}`;
             });
         });
 
         function getRandomColor() {
-            return '#' + Math.floor(Math.random()*16777215).toString(16);
+            const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        function getRandomPosition() {
+            return {
+                x: (Math.random() * 2 - 1),
+                y: Math.random() * 0.5,
+                z: (Math.random() * -1.5) - 0.5
+            };
         }
     </script>
 </body>
