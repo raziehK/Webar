@@ -9,61 +9,82 @@
     <script src="https://cdn.jsdelivr.net/gh/nicolocarpignoli/geo-ar.js/dist/geo-ar.min.js"></script>
     <style>
         body { margin: 0; overflow: hidden }
-        a-scene { height: 100vh; width: 100vw }
+        #debug-panel {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px;
+            z-index: 9999;
+        }
     </style>
 </head>
 <body>
+    <div id="debug-panel">
+        <div>Distance to Model: <span id="distance">-</span>m</div>
+        <div>GPS Accuracy: <span id="accuracy">-</span></div>
+    </div>
+
     <a-scene 
         embedded 
         arjs="sourceType: webcam; sourceWidth: 1280; sourceHeight: 720; debugUIEnabled: false"
         renderer="logarithmicDepthBuffer: true; precision: medium;"
-        gps-camera="gpsMinDistance: 5"
+        gps-camera="gpsMinDistance: 5; simulateLatitude: 48.2898625; simulateLongitude: 14.2827365;"
     >
-        <!-- Marker for calibration (replace with your pattern) -->
+        <!-- Marker for calibration -->
         <a-marker 
             id="ar-marker" 
             type="pattern" 
             url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/patt.kanji"
-            emitevents="true" 
-            cursor="rayOrigin: mouse"
         >
-            <!-- Your 3D Model at specified GPS coordinates -->
-            <a-entity
-                id="model-container"
-                glb-model="src: https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/REPO_NAME/main/My_model.glb"
-                scale="1 1 1"
-                position="0 0 0"
-                rotation="0 0 0"
-                gps-entity-place="latitude: 48.2898625; longitude: 14.2827365;"
-                animation="property: rotation; to: 0 360 0; loop: true; dur: 10000"
-            >
+            <!-- Scaled Model Container -->
+            <a-entity id="model-container" position="0 1.5 0">
+                <!-- Your 3D Model (scaled 5x) -->
+                <a-entity
+                    glb-model="src: https://raw.githubusercontent.com/YOUR_USER/REPO/main/My_model.glb?t=123"
+                    scale="5 5 5"
+                    gps-entity-place="latitude: 48.2898625; longitude: 14.2827365;"
+                ></a-entity>
+                
+                <!-- Test Primitive (giant red box) -->
+                <a-box 
+                    color="red" 
+                    scale="2 2 2"
+                    position="0 -1 0"
+                    animation="property: rotation; to: 0 360 0; loop: true; dur: 5000"
+                ></a-box>
             </a-entity>
         </a-marker>
 
-        <!-- Camera Setup -->
-        <a-entity id="camera" camera look-controls wasd-controls></a-entity>
+        <a-entity camera look-controls wasd-controls></a-entity>
     </a-scene>
 
     <script>
-        // Camera projection fix
-        AFRAME.registerComponent('fix-projection', {
+        // Force model reload on refresh
+        const cacheBuster = `?t=${Date.now()}`;
+        document.querySelector('[glb-model]').setAttribute('glb-model', 'src', 
+            `https://raw.githubusercontent.com/YOUR_USER/REPO/main/My_model.glb${cacheBuster}`);
+
+        // Debug GPS information
+        window.addEventListener('gps-entity-place-update', (e) => {
+            document.getElementById('distance').textContent = e.detail.distance.toFixed(1);
+            document.getElementById('accuracy').textContent = e.detail.accuracy.toFixed(1) + 'm';
+        });
+
+        // Auto-zoom based on distance
+        AFRAME.registerComponent('auto-scale', {
             tick: function() {
-                const camera = this.el.sceneEl.camera;
-                if(camera && camera.el.getAttribute('arjs-device-orientation')) {
-                    camera.projectionMatrix = camera.el.getAttribute('arjs-device-orientation').projectionMatrix;
+                const distance = parseFloat(document.getElementById('distance').textContent);
+                if(distance && !isNaN(distance)) {
+                    const scale = Math.min(Math.max(distance * 0.5, 2), 10);
+                    this.el.setAttribute('scale', `${scale} ${scale} ${scale}`);
                 }
             }
         });
 
-        // Auto-rotate model when marker is visible
-        document.querySelector('#ar-marker').addEventListener('markerFound', () => {
-            document.querySelector('#model-container').setAttribute('animation', 'enabled', true);
-        });
-
-        // Force cache refresh on load
-        const cacheBuster = Date.now();
-        document.querySelector('[glb-model]').setAttribute('glb-model', 'src', 
-            `https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/REPO_NAME/main/My_model.glb?t=${cacheBuster}`);
+        // Add to model container
+        document.querySelector('#model-container').setAttribute('auto-scale', '');
     </script>
 </body>
 </html>
