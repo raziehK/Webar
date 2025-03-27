@@ -3,12 +3,12 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tap-to-Place AR Boxes</title>
+    <title>World-Space AR Placement</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
         body { margin: 0; overflow: hidden }
-        #tap-hint {
+        #instructions {
             position: fixed;
             bottom: 20px;
             left: 0;
@@ -23,7 +23,7 @@
     </style>
 </head>
 <body>
-    <div id="tap-hint">Tap anywhere to place a box</div>
+    <div id="instructions">Point at a surface and tap to place boxes</div>
 
     <a-scene 
         vr-mode-ui="enabled: false"
@@ -32,50 +32,58 @@
     >
         <!-- Camera setup -->
         <a-entity camera></a-entity>
+        
+        <!-- Cursor for aiming -->
+        <a-cursor 
+            id="cursor"
+            raycaster="far: 5; objects: .clickable"
+            animation__click="property: scale; startEvents: click; from: 0.1 0.1 0.1; to: 1 1 1; dur: 150"
+        ></a-cursor>
     </a-scene>
 
     <script>
         const scene = document.querySelector('a-scene');
-        
+        const cursor = document.getElementById('cursor');
+        let arSession;
+        let boxesPlaced = 0;
+
         // Wait for AR to initialize
         scene.addEventListener('loaded', () => {
-            // Create 100 boxes when tapping
-            let boxCount = 0;
-            const maxBoxes = 100;
+            arSession = scene.systems['arjs']._arSession;
             
-            window.addEventListener('click', (e) => {
-                if(boxCount >= maxBoxes) return;
+            // Create boxes when tapping real surfaces
+            cursor.addEventListener('click', (e) => {
+                if(boxesPlaced >= 20) return;
                 
-                // Create a new box
-                const box = document.createElement('a-box');
-                box.setAttribute('color', getRandomColor());
-                box.setAttribute('scale', '0.2 0.2 0.2');
-                box.setAttribute('position', getRandomPosition());
-                box.setAttribute('animation', {
-                    property: 'rotation',
-                    to: '0 360 0',
-                    loop: true,
-                    dur: Math.random() * 3000 + 2000
-                });
-                
-                scene.appendChild(box);
-                boxCount++;
-                document.getElementById('tap-hint').textContent = 
-                    `Boxes placed: ${boxCount}/${maxBoxes}`;
+                const intersection = e.detail.intersection;
+                if(intersection) {
+                    createBox(intersection.point);
+                    boxesPlaced++;
+                    document.getElementById('instructions').textContent = 
+                        `Boxes placed: ${boxesPlaced}/20 (Look around to see them)`;
+                }
             });
         });
 
-        function getRandomColor() {
-            const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF'];
-            return colors[Math.floor(Math.random() * colors.length)];
+        function createBox(position) {
+            const box = document.createElement('a-box');
+            box.setAttribute('position', position);
+            box.setAttribute('color', getRandomColor());
+            box.setAttribute('scale', '0.2 0.2 0.2');
+            box.setAttribute('class', 'clickable');
+            box.setAttribute('shadow', 'cast: true');
+            box.setAttribute('animation', {
+                property: 'rotation',
+                to: '0 360 0',
+                loop: true,
+                dur: 5000
+            });
+            scene.appendChild(box);
         }
 
-        function getRandomPosition() {
-            return {
-                x: (Math.random() * 2 - 1),
-                y: Math.random() * 0.5,
-                z: (Math.random() * -1.5) - 0.5
-            };
+        function getRandomColor() {
+            const colors = ['#FF3E00', '#07A0C3', '#F0C808', '#DD1C1A', '#06D6A0'];
+            return colors[Math.floor(Math.random() * colors.length)];
         }
     </script>
 </body>
