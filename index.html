@@ -3,95 +3,78 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>World/Marker AR Placement</title>
+    <title>AR Camera Test</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
         body { margin: 0; overflow: hidden }
-        #controls {
+        #status {
             position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+            top: 10px;
+            left: 10px;
             color: white;
-            text-align: center;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            z-index: 9999;
         }
     </style>
 </head>
 <body>
-    <div id="controls">
-        <button onclick="placeObject()">Place Here</button>
-        <p id="status">Initializing...</p>
-    </div>
+    <div id="status">Initializing...</div>
 
+    <!-- 1. Basic Scene Setup -->
     <a-scene 
         embedded 
-        arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best;"
+        arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: true;"
         vr-mode-ui="enabled: false"
     >
-        <!-- Marker Tracking Version (comment/uncomment) -->
-        <!--
-        <a-marker preset="hiro">
-            <a-entity id="virtual-object" glb-model="url(https://your-model.glb)"></a-entity>
-        </a-marker>
-        -->
+        <!-- 2. Simple Test Object -->
+        <a-box 
+            id="test-box"
+            position="0 0 -1" 
+            color="red" 
+            scale="0.2 0.2 0.2"
+            visible="false"
+        ></a-box>
 
-        <!-- World Tracking Version -->
-        <a-entity id="virtual-object" glb-model="url(https://your-model.glb)" visible="false"></a-entity>
-        
+        <!-- 3. Camera Setup -->
         <a-entity camera></a-entity>
     </a-scene>
 
     <script>
-        // ======================
-        // WORLD TRACKING VERSION
-        // ======================
-        let objectPlaced = false;
-        const modelScale = 0.5; // Adjust based on your model size
+        // 4. Debugging System
+        const statusDiv = document.getElementById('status');
+        const testBox = document.getElementById('test-box');
 
-        function placeObject() {
-            if(!objectPlaced) {
-                const scene = document.querySelector('a-scene');
-                const object = document.querySelector('#virtual-object');
-                
-                // Get device orientation
-                scene.systems["arjs"].getSource().copyWorldPosition(object.object3D);
-                
-                // Set scale and visibility
-                object.setAttribute('scale', `${modelScale} ${modelScale} ${modelScale}`);
-                object.setAttribute('visible', 'true');
-                objectPlaced = true;
-                
-                document.getElementById('status').textContent = "Object placed!";
-            }
-        }
-
-        // =====================
-        // COMMON INITIALIZATION
-        // =====================
+        // 5. AR Scene Initialization
         document.querySelector('a-scene').addEventListener('loaded', () => {
-            // Check camera support
-            if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                document.getElementById('status').textContent = "AR not supported on this device";
+            // Check WebGL support
+            if(!AFRAME.utils.device.checkWebGLSupport()) {
+                statusDiv.innerHTML = "WebGL not supported!<br>Update your browser";
                 return;
             }
 
-            // Start AR session
+            // Check for camera access
             navigator.mediaDevices.getUserMedia({ video: true })
-                .then(() => {
-                    document.getElementById('status').textContent = "Point camera and tap 'Place Here'";
+                .then(stream => {
+                    statusDiv.textContent = "Camera access granted!";
+                    testBox.setAttribute('visible', 'true');
+                    
+                    // Add marker-based tracking
+                    const marker = document.createElement('a-marker');
+                    marker.setAttribute('preset', 'hiro');
+                    marker.appendChild(testBox);
+                    document.querySelector('a-scene').appendChild(marker);
                 })
-                .catch(() => {
-                    document.getElementById('status').textContent = "Camera access denied";
+                .catch(err => {
+                    statusDiv.innerHTML = `Camera error:<br>${err.message}`;
                 });
         });
 
-        // Add test object for verification
-        const testBox = document.createElement('a-box');
-        testBox.setAttribute('color', 'red');
-        testBox.setAttribute('position', '0 0 -1');
-        testBox.setAttribute('scale', '0.2 0.2 0.2');
-        document.querySelector('a-scene').appendChild(testBox);
+        // 6. Force HTTPS redirect
+        if(window.location.protocol !== 'https:') {
+            window.location.href = `https://${window.location.host}${window.location.pathname}`;
+        }
     </script>
 </body>
 </html>
