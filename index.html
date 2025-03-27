@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Apartment-scale AR Test</title>
+    <title>Indoor AR with Height Adjustment</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/nicolocarpignoli/geo-ar.js/dist/geo-ar.min.js"></script>
@@ -23,70 +23,88 @@
 </head>
 <body>
     <div id="debug">
-        GPS Accuracy: <span id="accuracy">-</span>m<br>
-        Distance: <span id="distance">-</span>m<br>
-        Marker State: <span id="marker-state">-</span>
+        Your Altitude: <span id="altitude">-</span>m<br>
+        Model Height: <span id="model-height">3.0</span>m<br>
+        <button onclick="adjustHeight(1)">↑ Increase Height</button>
+        <button onclick="adjustHeight(-1)">↓ Decrease Height</button>
     </div>
 
     <a-scene 
         embedded 
-        arjs="sourceType: webcam; sourceWidth: 1280; sourceHeight: 720; debugUIEnabled: true;"
-        renderer="logarithmicDepthBuffer: true; precision: high;"
-        gps-camera="gpsMinDistance: 0; simulateLatitude: 48.2898099; simulateLongitude: 14.2827348;"
+        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+        renderer="logarithmicDepthBuffer: true;"
+        gps-camera="gpsMinDistance: 0"
     >
-        <!-- Marker Definition (Apartment Scale) -->
+        <!-- Floor Marker -->
         <a-marker 
-            id="apt-marker"
+            id="floor-marker"
             type="pattern"
             url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/patt.kanji"
-            size="1"
+            size="0.5"
         >
-            <!-- Apartment-scale Red Box (10x3x10 meters) -->
-            <a-box
-                color="#FF0000"
-                position="0 1.5 0"  <!-- Center position -->
-                scale="10 3 10"     <!-- X (width), Y (height), Z (depth) -->
-                metalness="0.5"
-                roughness="0.2"
-                animation="property: components.material.material.color; type: color; to: #880000; dir: alternate; loop: true; dur: 2000"
-            ></a-box>
+            <!-- Adjustable Height Model -->
+            <a-entity
+                id="room-model"
+                glb-model="src: https://rawcdn.githack.com/YOUR_GITHUB_USER/YOUR_REPO/BRANCH/My_model.glb"
+                scale="3 3 3"
+                position="0 3 0" <!-- Initial height offset (3 meters) -->
+                gps-entity-place="latitude: 48.2898099; longitude: 14.2827348;"
+            >
+                <!-- Visible Bounding Box -->
+                <a-box 
+                    color="red"
+                    wireframe="true"
+                    scale="2 2 2"
+                    position="0 0 0"
+                    visible="true"
+                ></a-box>
+            </a-entity>
         </a-marker>
 
-        <a-entity camera></a-entity>
+        <!-- Camera setup with vertical offset -->
+        <a-entity camera position="0 1.6 0"></a-entity>
     </a-scene>
 
     <script>
-        // Debugging Setup
-        const marker = document.querySelector('#apt-marker');
-        
-        // GPS Updates
+        // Altitude tracking
+        let userAltitude = 0;
+        let modelHeightOffset = 3.0; // Initial height (3 meters)
+
+        // Get altitude updates
         window.addEventListener('gps-entity-place-update', (e) => {
-            document.getElementById('accuracy').textContent = e.detail.accuracy.toFixed(1);
-            document.getElementById('distance').textContent = e.detail.distance.toFixed(1);
+            userAltitude = e.detail.altitude;
+            document.getElementById('altitude').textContent = userAltitude.toFixed(1);
         });
 
-        // Marker Detection Events
-        marker.addEventListener('markerFound', () => {
-            document.getElementById('marker-state').textContent = 'DETECTED';
-            document.getElementById('marker-state').style.color = '#00ff00';
-        });
+        // Height adjustment controls
+        function adjustHeight(change) {
+            modelHeightOffset = Math.max(0, modelHeightOffset + change);
+            document.getElementById('model-height').textContent = modelHeightOffset.toFixed(1);
+            document.querySelector('#room-model').setAttribute('position', `0 ${modelHeightOffset} 0`);
+        }
 
-        marker.addEventListener('markerLost', () => {
-            document.getElementById('marker-state').textContent = 'NOT FOUND';
-            document.getElementById('marker-state').style.color = '#ff0000';
-        });
-
-        // Force Cache Refresh
-        const version = Date.now();
-        const scene = document.querySelector('a-scene');
-        scene.setAttribute('arjs', `sourceType: webcam; debugUIEnabled: true; version: ${version}`);
-
-        // Auto-reload if no marker detected in 10s
-        setTimeout(() => {
-            if(document.getElementById('marker-state').textContent !== 'DETECTED') {
-                window.location.reload();
+        // Automatic vertical positioning
+        AFRAME.registerComponent('height-adjuster', {
+            tick: function() {
+                const model = document.querySelector('#room-model');
+                const position = model.getAttribute('position');
+                model.setAttribute('position', {
+                    x: position.x,
+                    y: modelHeightOffset,
+                    z: position.z
+                });
             }
-        }, 10000);
+        });
+
+        // Initialize
+        document.querySelector('#room-model').setAttribute('height-adjuster', '');
+        
+        // Force model reload for mobile
+        if(/Mobile/.test(navigator.userAgent)) {
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        }
     </script>
 </body>
 </html>
