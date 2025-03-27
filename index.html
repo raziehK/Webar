@@ -2,27 +2,54 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AR Ground Box</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marker AR Pinning</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden }
+        #marker-hint {
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+        }
+    </style>
 </head>
-<body style="margin: 0; overflow: hidden;">
+<body>
+    <div id="marker-hint">Show the Hiro marker to camera</div>
+
     <a-scene 
         vr-mode-ui="enabled: false"
-        arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false"
-        renderer="logarithmicDepthBuffer: true;"
+        arjs="sourceType: webcam; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+        renderer="logarithmicDepthBuffer: true"
     >
-        <!-- Static box placed on ground -->
-        <a-box 
-            position="0 0 -1" 
-            rotation="-90 0 0" 
-            color="red" 
-            scale="0.3 0.3 0.3"
-            shadow
-        ></a-box>
-        
+        <!-- Hiro Marker Definition -->
+        <a-marker preset="hiro">
+            <!-- Pinned 3D Object -->
+            <a-box
+                id="pinned-object"
+                position="0 0.5 0"
+                color="#FF0000"
+                scale="0.3 0.3 0.3"
+                shadow
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 5000"
+            ></a-box>
+        </a-marker>
+
         <a-entity camera></a-entity>
     </a-scene>
+
+    <script>
+        // Confirm marker detection
+        const marker = document.querySelector('a-marker');
+        marker.addEventListener('markerFound', () => {
+            document.getElementById('marker-hint').textContent = "Marker found! Object pinned.";
+        });
+    </script>
 </body>
 </html>
