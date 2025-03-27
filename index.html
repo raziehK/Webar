@@ -2,13 +2,12 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>World-Space AR Placement</title>
+    <title>Simple AR Box Placer</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
         body { margin: 0; overflow: hidden }
-        #instructions {
+        #tap-hint {
             position: fixed;
             bottom: 20px;
             left: 0;
@@ -17,74 +16,42 @@
             color: white;
             background: rgba(0,0,0,0.7);
             padding: 10px;
-            font-family: Arial;
-            z-index: 9999;
         }
     </style>
 </head>
 <body>
-    <div id="instructions">Point at a surface and tap to place boxes</div>
+    <div id="tap-hint">Tap anywhere to place a red box</div>
 
     <a-scene 
         vr-mode-ui="enabled: false"
-        arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false"
-        renderer="logarithmicDepthBuffer: true; antialias: true"
+        arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false"
     >
-        <!-- Camera setup -->
+        <!-- Camera -->
         <a-entity camera></a-entity>
         
-        <!-- Cursor for aiming -->
-        <a-cursor 
-            id="cursor"
-            raycaster="far: 5; objects: .clickable"
-            animation__click="property: scale; startEvents: click; from: 0.1 0.1 0.1; to: 1 1 1; dur: 150"
-        ></a-cursor>
+        <!-- This box will be copied on tap -->
+        <a-entity id="template-box" visible="false">
+            <a-box color="red" scale="0.2 0.2 0.2"></a-box>
+        </a-entity>
     </a-scene>
 
     <script>
         const scene = document.querySelector('a-scene');
-        const cursor = document.getElementById('cursor');
-        let arSession;
-        let boxesPlaced = 0;
-
-        // Wait for AR to initialize
-        scene.addEventListener('loaded', () => {
-            arSession = scene.systems['arjs']._arSession;
-            
-            // Create boxes when tapping real surfaces
-            cursor.addEventListener('click', (e) => {
-                if(boxesPlaced >= 20) return;
+        
+        // Wait for AR to load
+        scene.addEventListener('loaded', function() {
+            // Place box on any tap
+            window.addEventListener('click', function() {
+                const newBox = document.getElementById('template-box').cloneNode(true);
+                newBox.setAttribute('visible', 'true');
                 
-                const intersection = e.detail.intersection;
-                if(intersection) {
-                    createBox(intersection.point);
-                    boxesPlaced++;
-                    document.getElementById('instructions').textContent = 
-                        `Boxes placed: ${boxesPlaced}/20 (Look around to see them)`;
-                }
+                // Place 1 meter in front of camera
+                newBox.setAttribute('position', '0 0 -1');
+                
+                scene.appendChild(newBox);
+                document.getElementById('tap-hint').textContent = `Box placed!`;
             });
         });
-
-        function createBox(position) {
-            const box = document.createElement('a-box');
-            box.setAttribute('position', position);
-            box.setAttribute('color', getRandomColor());
-            box.setAttribute('scale', '0.2 0.2 0.2');
-            box.setAttribute('class', 'clickable');
-            box.setAttribute('shadow', 'cast: true');
-            box.setAttribute('animation', {
-                property: 'rotation',
-                to: '0 360 0',
-                loop: true,
-                dur: 5000
-            });
-            scene.appendChild(box);
-        }
-
-        function getRandomColor() {
-            const colors = ['#FF3E00', '#07A0C3', '#F0C808', '#DD1C1A', '#06D6A0'];
-            return colors[Math.floor(Math.random() * colors.length)];
-        }
     </script>
 </body>
 </html>
